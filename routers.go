@@ -49,7 +49,9 @@ import (
 	"github.com/typepress/rivet"
 	"github.com/ursiform/bear"
 	"github.com/vanng822/r2router"
-	goji "github.com/zenazn/goji/web"
+	"goji.io"
+	gojipat "goji.io/pat"
+	gojicontext "golang.org/x/net/context"
 )
 
 type route struct {
@@ -478,8 +480,8 @@ func loadGocraftWebSingle(method, path string, handler interface{}) http.Handler
 }
 
 // goji
-func gojiFuncWrite(c goji.C, w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, c.URLParams["name"])
+func gojiFuncWrite(ctx gojicontext.Context, w http.ResponseWriter, r *http.Request) {
+	io.WriteString(w, gojipat.Param(ctx, "name"))
 }
 
 func loadGoji(routes []route) http.Handler {
@@ -488,19 +490,19 @@ func loadGoji(routes []route) http.Handler {
 		h = httpHandlerFuncTest
 	}
 
-	mux := goji.New()
+	mux := goji.NewMux()
 	for _, route := range routes {
 		switch route.method {
 		case "GET":
-			mux.Get(route.path, h)
+			mux.HandleFunc(gojipat.Get(route.path), h)
 		case "POST":
-			mux.Post(route.path, h)
+			mux.HandleFunc(gojipat.Post(route.path), h)
 		case "PUT":
-			mux.Put(route.path, h)
+			mux.HandleFunc(gojipat.Put(route.path), h)
 		case "PATCH":
-			mux.Patch(route.path, h)
+			mux.HandleFunc(gojipat.Patch(route.path), h)
 		case "DELETE":
-			mux.Delete(route.path, h)
+			mux.HandleFunc(gojipat.Delete(route.path), h)
 		default:
 			panic("Unknown HTTP method: " + route.method)
 		}
@@ -509,18 +511,19 @@ func loadGoji(routes []route) http.Handler {
 }
 
 func loadGojiSingle(method, path string, handler interface{}) http.Handler {
-	mux := goji.New()
+	type gojiHandler func(gojicontext.Context, http.ResponseWriter, *http.Request)
+	mux := goji.NewMux()
 	switch method {
 	case "GET":
-		mux.Get(path, handler)
+		mux.HandleFuncC(gojipat.Get(path), handler.(gojiHandler))
 	case "POST":
-		mux.Post(path, handler)
+		mux.HandleFuncC(gojipat.Post(path), handler.(gojiHandler))
 	case "PUT":
-		mux.Put(path, handler)
+		mux.HandleFuncC(gojipat.Put(path), handler.(gojiHandler))
 	case "PATCH":
-		mux.Patch(path, handler)
+		mux.HandleFuncC(gojipat.Patch(path), handler.(gojiHandler))
 	case "DELETE":
-		mux.Delete(path, handler)
+		mux.HandleFuncC(gojipat.Delete(path), handler.(gojiHandler))
 	default:
 		panic("Unknow HTTP method: " + method)
 	}
